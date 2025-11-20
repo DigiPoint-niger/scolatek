@@ -1,0 +1,131 @@
+"use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+
+export default function ParentInvoicesPage() {
+  const [invoices, setInvoices] = useState([]);
+  const [receipts, setReceipts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      // Récupérer les enfants
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('profile_id', session.user.id)
+        .single();
+      if (!parent) return;
+      const { data: parentStudents } = await supabase
+        .from('parent_students')
+        .select('student_id')
+        .eq('parent_id', parent.id);
+      const studentIds = parentStudents?.map(ps => ps.student_id) || [];
+      if (studentIds.length === 0) return;
+      const { data: invoicesData } = await supabase
+        .from('invoices')
+        .select('*, students(profiles(first_name, last_name))')
+        .in('student_id', studentIds)
+        .order('due_date', { ascending: false });
+      setInvoices(invoicesData || []);
+      // Récupérer les reçus
+      const { data: receiptsData } = await supabase
+        .from('receipts')
+        .select('*, students(profiles(first_name, last_name)), payments(amount, paid_at)')
+        .in('student_id', studentIds)
+        .order('paid_at', { ascending: false });
+      setReceipts(receiptsData || []);
+      setLoading(false);
+    };
+    fetchInvoices();
+  }, []);
+
+  const handleDownloadReceipt = (receipt) => {
+    // Simule le téléchargement, à remplacer par une vraie logique si besoin
+    setSelectedReceipt(receipt);
+    setShowModal(true);
+  };
+
+  if (loading) return <div>Chargement...</div>;
+
+  return (
+    <div className="p-8">
+      <h2 className="text-xl font-bold mb-4">Factures et reçus de mes enfants</h2>
+      <h3 className="text-lg font-semibold mb-2">Factures</h3>
+      <table className="min-w-full bg-white mb-8">
+        <thead>
+          <tr>
+            <th>Élève</th>
+            <th>Numéro</th>
+            <th>Montant</th>
+            <th>Date limite</th>
+            <th>Status</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invoices.map(inv => (
+            <tr key={inv.id}>
+              <td>{inv.students?.profiles?.first_name} {inv.students?.profiles?.last_name}</td>
+              <td>{inv.invoice_number}</td>
+              <td>{inv.amount} FCFA</td>
+              <td>{new Date(inv.due_date).toLocaleDateString('fr-FR')}</td>
+              <td>{inv.status}</td>
+              <td>{inv.description || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3 className="text-lg font-semibold mb-2">Reçus</h3>
+      <table className="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th>Élève</th>
+            <th>Numéro de reçu</th>
+            <th>Montant</th>
+            <th>Date de paiement</th>
+            <th>Méthode</th>
+            <th>Référence</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {receipts.map(rec => (
+            <tr key={rec.id}>
+              <td>{rec.students?.profiles?.first_name} {rec.students?.profiles?.last_name}</td>
+              <td>{rec.receipt_number}</td>
+              <td>{rec.amount} FCFA</td>
+              <td>{rec.paid_at ? new Date(rec.paid_at).toLocaleDateString('fr-FR') : '-'}</td>
+              <td>{rec.payment_method || '-'}</td>
+              <td>{rec.transaction_ref || '-'}</td>
+              <td>
+                <button className="px-2 py-1 bg-green-600 text-white rounded" onClick={() => handleDownloadReceipt(rec)}>Télécharger</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Modal de téléchargement */}
+      {showModal && selectedReceipt && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">Télécharger le reçu</h3>
+            <p>Numéro de reçu : <strong>{selectedReceipt.receipt_number}</strong></p>
+            <p>Montant : <strong>{selectedReceipt.amount} FCFA</strong></p>
+            <p>Date de paiement : <strong>{selectedReceipt.paid_at ? new Date(selectedReceipt.paid_at).toLocaleDateString('fr-FR') : '-'}</strong></p>
+            <div className="flex justify-end space-x-2 mt-4">
+              <button type="button" className="px-4 py-2 bg-gray-300 rounded" onClick={() => { setShowModal(false); setSelectedReceipt(null); }}>Fermer</button>
+              <a href="#" download className="px-4 py-2 bg-green-600 text-white rounded">Télécharger PDF</a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
