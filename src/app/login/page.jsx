@@ -33,7 +33,7 @@ export default function Login() {
           setMaintenanceMode(settings.maintenance_mode === true);
         }
       } catch (err) {
-        console.error("Erreur chargement paramètres:", err);
+        //console.error("Erreur chargement paramètres:", err);
       }
     };
 

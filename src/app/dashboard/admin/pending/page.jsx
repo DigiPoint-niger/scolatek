@@ -18,7 +18,7 @@ import {
 export default function PendingPage() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(null); // Pour suivre quelle demande est en cours de traitement
+  const [processing, setProcessing] = useState(null);
 
   useEffect(() => {
     fetchPendingRequests();
@@ -57,9 +57,7 @@ export default function PendingPage() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          status: 'active',
-          confirmed_at: new Date().toISOString(),
-          confirmed_by: (await supabase.auth.getUser()).data.user?.id
+          status: 'active'
         })
         .eq('id', userId);
 
@@ -75,15 +73,91 @@ export default function PendingPage() {
         if (schoolError) throw schoolError;
       }
 
+      // Créer l'entrée dans la table spécifique au rôle
+      await createRoleSpecificEntry(userId);
+
       // Recharger les demandes
       await fetchPendingRequests();
       alert("Demande approuvée avec succès !");
       
     } catch (error) {
       console.error("Erreur lors de l'approbation:", error);
-      alert("Erreur lors de l'approbation de la demande");
+      alert(`Erreur lors de l'approbation: ${error.message}`);
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const createRoleSpecificEntry = async (profileId) => {
+    try {
+      // Récupérer le rôle du profil
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, school_id')
+        .eq('id', profileId)
+        .single();
+
+      if (error) throw error;
+
+      const { role, school_id } = profile;
+      let tableName = '';
+      
+      // Déterminer la table cible selon le rôle
+      switch (role) {
+        case 'teacher':
+          tableName = 'teachers';
+          break;
+        case 'student':
+          tableName = 'students';
+          break;
+        case 'parent':
+          tableName = 'parents';
+          break;
+        case 'accountant':
+          tableName = 'accountants';
+          break;
+        case 'supervisor':
+          tableName = 'supervisors';
+          break;
+        case 'director':
+          // Les directeurs n'ont pas de table spécifique dans votre schéma
+          return;
+        default:
+          console.warn(`Rôle non géré: ${role}`);
+          return;
+      }
+
+      // Vérifier si l'entrée existe déjà
+      const { data: existingEntry, error: checkError } = await supabase
+        .from(tableName)
+        .select('id')
+        .eq('profile_id', profileId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Créer l'entrée si elle n'existe pas
+      if (!existingEntry) {
+        const { error: insertError } = await supabase
+          .from(tableName)
+          .insert({
+            profile_id: profileId,
+            school_id: school_id
+          });
+
+        if (insertError) {
+          // Si l'erreur est due à une violation de contrainte, c'est probablement normal
+          if (insertError.code !== '23505') { // Code pour violation de contrainte unique
+            throw insertError;
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error(`Erreur lors de la création de l'entrée spécifique au rôle:`, error);
+      // Ne pas bloquer le processus principal pour cette erreur
     }
   };
 
@@ -98,9 +172,7 @@ export default function PendingPage() {
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          status: 'rejected',
-          confirmed_at: new Date().toISOString(),
-          confirmed_by: (await supabase.auth.getUser()).data.user?.id
+          status: 'rejected'
         })
         .eq('id', userId);
 
@@ -184,6 +256,11 @@ export default function PendingPage() {
                     <p className="text-sm text-gray-500 flex items-center mt-1">
                       <FontAwesomeIcon icon={faSchool} className="mr-2 text-gray-400" />
                       École: {request.schools.name}
+                      {request.schools.is_active ? (
+                        <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Active</span>
+                      ) : (
+                        <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">En attente</span>
+                      )}
                     </p>
                   )}
                 </div>

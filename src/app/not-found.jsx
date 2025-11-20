@@ -14,17 +14,10 @@ export default function NotFound() {
 
         <div className="space-y-4">
           <Link
-            href="/"
+            href="/dashboard"
             className="block w-full px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-600 text-white font-semibold shadow hover:scale-105 transition-transform"
           >
-            Retour à l'accueil
-          </Link>
-          
-          <Link
-            href="/login"
-            className="block w-full px-6 py-3 rounded-xl border-2 border-blue-500 text-blue-700 font-semibold bg-white shadow hover:bg-blue-50 transition-colors"
-          >
-            Se connecter
+            Retour
           </Link>
         </div>
 

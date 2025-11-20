@@ -67,7 +67,7 @@ export default function Register() {
       if (error) throw error;
       setSchools(data || []);
     } catch (err) {
-      console.error("Erreur chargement écoles:", err);
+      //console.error("Erreur chargement écoles:", err);
     }
   };
 
@@ -77,9 +77,10 @@ export default function Register() {
   }, []);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
@@ -133,6 +134,22 @@ export default function Register() {
       setError("L'inscription pour ce rôle est temporairement désactivée.");
       setLoading(false);
       return;
+    }
+
+    // Validation pour les rôles non-directeurs : ils doivent sélectionner une école
+    if (formData.role !== "director" && !formData.schoolId) {
+      setError("Veuillez sélectionner une école.");
+      setLoading(false);
+      return;
+    }
+
+    // Validation pour les directeurs : ils doivent remplir les informations de l'école
+    if (formData.role === "director") {
+      if (!formData.schoolName || !formData.schoolAddress || !formData.schoolPhone || !formData.schoolEmail) {
+        setError("Veuillez remplir toutes les informations de l'école.");
+        setLoading(false);
+        return;
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -197,8 +214,8 @@ export default function Register() {
       if (profileError) throw profileError;
 
       // 4. Créer l'entrée dans la table spécifique au rôle si nécessaire
-      if (['teacher', 'parent', 'accountant', 'supervisor'].includes(formData.role)) {
-        const roleTable = formData.role + 's'; // teachers, parents, etc.
+      if (['teacher', 'parent', 'accountant', 'supervisor', 'student'].includes(formData.role)) {
+        const roleTable = formData.role === 'student' ? 'students' : formData.role + 's'; // students, teachers, parents, etc.
         const { error: roleError } = await supabase
           .from(roleTable)
           .insert({
@@ -239,7 +256,7 @@ export default function Register() {
   };
 
   const isDirector = formData.role === "director";
-  const needsSchoolSelection = !isDirector && formData.role !== "admin" && formData.role !== "supervisor" && formData.role !== "accountant";
+  const needsSchoolSelection = !isDirector && formData.role !== "admin";
   const availableRoles = getAvailableRoles();
 
   // Mode maintenance
@@ -400,7 +417,7 @@ export default function Register() {
                 name="schoolId"
                 value={formData.schoolId}
                 onChange={handleChange}
-                required
+                required={needsSchoolSelection}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="">Sélectionnez votre école</option>
@@ -421,7 +438,7 @@ export default function Register() {
           {/* Création d'école pour les directeurs */}
           {isDirector && (
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-3">Informations de l'école</h3>
+              <h3 className="font-semibold text-blue-800 mb-3">Création de votre école</h3>
               <div className="space-y-4">
                 <div>
                   <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -433,7 +450,7 @@ export default function Register() {
                     type="text"
                     value={formData.schoolName}
                     onChange={handleChange}
-                    required
+                    required={isDirector}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     placeholder="Nom de votre établissement"
                   />
@@ -449,7 +466,7 @@ export default function Register() {
                     type="text"
                     value={formData.schoolAddress}
                     onChange={handleChange}
-                    required
+                    required={isDirector}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     placeholder="Adresse complète"
                   />
@@ -466,7 +483,7 @@ export default function Register() {
                       type="tel"
                       value={formData.schoolPhone}
                       onChange={handleChange}
-                      required
+                      required={isDirector}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       placeholder="+227 XX XX XX XX"
                     />
@@ -482,7 +499,7 @@ export default function Register() {
                       type="email"
                       value={formData.schoolEmail}
                       onChange={handleChange}
-                      required
+                      required={isDirector}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       placeholder="contact@ecole.com"
                     />

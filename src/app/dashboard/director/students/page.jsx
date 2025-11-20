@@ -85,7 +85,7 @@ export default function DirectorStudents() {
       setStudents(studentsData || []);
       setLoading(false);
     } catch (error) {
-      console.error("Erreur:", error);
+      //console.error("Erreur:", error);
       setLoading(false);
     }
   };

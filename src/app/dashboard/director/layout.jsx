@@ -71,7 +71,6 @@ export default function DirectorLayout({ children }) {
     { name: "Matières", href: "/dashboard/director/subjects", icon: faBook },
     { name: "Paiements", href: "/dashboard/director/payments", icon: faMoneyBill },
     { name: "Emploi du temps", href: "/dashboard/director/schedule", icon: faCalendarAlt },
-    { name: "Paramètres", href: "/dashboard/director/settings", icon: faCog },
   ];
 
   if (loading) {
