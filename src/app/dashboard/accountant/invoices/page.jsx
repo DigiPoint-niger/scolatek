@@ -154,10 +154,6 @@ export default function InvoicesPage() {
 
       setInvoices(formattedInvoices);
       setLoading(false);
-    } catch (error) {
-      console.error("Erreur:", error);
-      setLoading(false);
-    }
   };
 
   const createInvoice = async () => {

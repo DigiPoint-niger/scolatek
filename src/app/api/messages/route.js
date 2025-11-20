@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(req) {
-  const supabase = createClient();
+  const supabase = supabase();
   const { searchParams } = new URL(req.url);
   const profileId = searchParams.get('profileId');
   const role = searchParams.get('role');
@@ -23,7 +23,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const supabase = createClient();
+  const supabase = supabase();
   const body = await req.json();
   const { sender_profile_id, receiver_profile_id, receiver_role, school_id, subject, body: messageBody } = body;
   const { data, error } = await supabase.from('messages').insert([
@@ -41,7 +41,7 @@ export async function POST(req) {
 }
 
 export async function PATCH(req) {
-  const supabase = createClient();
+  const supabase = supabase();
   const body = await req.json();
   const { id, is_read } = body;
   const { data, error } = await supabase.from('messages').update({ is_read }).eq('id', id);
@@ -50,7 +50,7 @@ export async function PATCH(req) {
 }
 
 export async function DELETE(req) {
-  const supabase = createClient();
+  const supabase = supabase();
   const body = await req.json();
   const { id } = body;
   const { error } = await supabase.from('messages').delete().eq('id', id);

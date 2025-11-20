@@ -1,11 +1,15 @@
+'use client';
 import { useEffect, useState } from 'react';
-import { Modal, Button, Input, Select } from '@/components/ui';
-import { createClient } from '@/lib/supabase';
 
 export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ subject: '', body: '', receiver_profile_id: '', receiver_role: '' });
+  const [form, setForm] = useState({ 
+    subject: '', 
+    body: '', 
+    receiver_profile_id: '', 
+    receiver_role: '' 
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -14,55 +18,207 @@ export default function MessagesPage() {
 
   async function fetchMessages() {
     setLoading(true);
-    const res = await fetch('/api/messages?profileId=ME'); // Remplacer ME par l'ID du profil connecté
-    const data = await res.json();
-    setMessages(data);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/messages?profileId=ME');
+      const data = await res.json();
+      setMessages(data);
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function sendMessage(e) {
     e.preventDefault();
     setLoading(true);
-    await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, sender_profile_id: 'ME', school_id: 'SCHOOL_ID' }), // Remplacer par les vraies valeurs
-    });
-    setModalOpen(false);
-    setForm({ subject: '', body: '', receiver_profile_id: '', receiver_role: '' });
-    fetchMessages();
+    try {
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...form, 
+          sender_profile_id: 'ME', 
+          school_id: 'SCHOOL_ID' 
+        }),
+      });
+      setModalOpen(false);
+      setForm({ 
+        subject: '', 
+        body: '', 
+        receiver_profile_id: '', 
+        receiver_role: '' 
+      });
+      fetchMessages();
+    } catch (error) {
+      console.error('Erreur envoi:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
       <h1>Messagerie interne</h1>
-      <Button onClick={() => setModalOpen(true)}>Nouveau message</Button>
-      <ul>
-        {loading ? <li>Chargement...</li> : messages.map(msg => (
-          <li key={msg.id}>
-            <b>{msg.subject}</b> - {msg.body}<br />
-            <span>De: {msg.sender_profile_id} | Pour: {msg.receiver_profile_id || msg.receiver_role}</span>
-          </li>
-        ))}
+      
+      <button 
+        onClick={() => setModalOpen(true)}
+        style={{
+          padding: '10px 15px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        Nouveau message
+      </button>
+
+      <ul style={{ listStyle: 'none', padding: 0 }}>
+        {loading ? (
+          <li>Chargement...</li>
+        ) : (
+          messages.map(msg => (
+            <li 
+              key={msg.id}
+              style={{
+                padding: '15px',
+                margin: '10px 0',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+            >
+              <b>{msg.subject}</b> - {msg.body}<br />
+              <span style={{ color: '#666', fontSize: '0.9em' }}>
+                De: {msg.sender_profile_id} | Pour: {msg.receiver_profile_id || msg.receiver_role}
+              </span>
+            </li>
+          ))
+        )}
       </ul>
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <form onSubmit={sendMessage}>
-          <Input placeholder="Sujet" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
-          <Input placeholder="Message" value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} />
-          <Input placeholder="ID destinataire" value={form.receiver_profile_id} onChange={e => setForm(f => ({ ...f, receiver_profile_id: e.target.value }))} />
-          <Select value={form.receiver_role} onChange={e => setForm(f => ({ ...f, receiver_role: e.target.value }))}>
-            <option value="">Rôle destinataire</option>
-            <option value="admin">Admin</option>
-            <option value="accountant">Accountant</option>
-            <option value="director">Director</option>
-            <option value="teacher">Teacher</option>
-            <option value="student">Student</option>
-            <option value="parent">Parent</option>
-            <option value="supervisor">Supervisor</option>
-          </Select>
-          <Button type="submit" disabled={loading}>Envoyer</Button>
-        </form>
-      </Modal>
+
+      {modalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              minWidth: '400px'
+            }}
+          >
+            <h2>Nouveau message</h2>
+            <form onSubmit={sendMessage}>
+              <input
+                type="text"
+                placeholder="Sujet"
+                value={form.subject}
+                onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  margin: '5px 0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+                required
+              />
+              <textarea
+                placeholder="Message"
+                value={form.body}
+                onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  margin: '5px 0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  minHeight: '100px'
+                }}
+                required
+              />
+              <input
+                type="text"
+                placeholder="ID destinataire (optionnel)"
+                value={form.receiver_profile_id}
+                onChange={e => setForm(f => ({ ...f, receiver_profile_id: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  margin: '5px 0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+              />
+              <select
+                value={form.receiver_role}
+                onChange={e => setForm(f => ({ ...f, receiver_role: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  margin: '5px 0',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+                required
+              >
+                <option value="">Sélectionnez un rôle</option>
+                <option value="admin">Admin</option>
+                <option value="accountant">Comptable</option>
+                <option value="director">Directeur</option>
+                <option value="teacher">Enseignant</option>
+                <option value="student">Étudiant</option>
+                <option value="parent">Parent</option>
+                <option value="supervisor">Superviseur</option>
+              </select>
+              <div style={{ marginTop: '15px', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  style={{
+                    padding: '8px 15px',
+                    marginRight: '10px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: '8px 15px',
+                    backgroundColor: loading ? '#6c757d' : '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: loading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {loading ? 'Envoi...' : 'Envoyer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
