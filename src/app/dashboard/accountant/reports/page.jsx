@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { exportToExcel } from "@/lib/exportUtils";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faDownload,
@@ -424,34 +425,49 @@ export default function ReportsPage() {
     try {
       setExporting(true);
       
-      // Simuler l'export
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      let content = '';
-      let filename = '';
-      let mimeType = '';
-      
       if (format === 'excel') {
-        // Générer un CSV simple pour l'exemple
-        content = generateCSV();
-        filename = `rapport-financier-${dateRange.start}-${dateRange.end}.csv`;
-        mimeType = 'text/csv';
+        // Générer un export Excel
+        const data = reports.payments.map(payment => ({
+          Date: new Date(payment.created_at).toLocaleDateString('fr-FR'),
+          Type: payment.type,
+          Étudiant: `${payment.students?.profiles?.first_name || ''} ${payment.students?.profiles?.last_name || ''}`,
+          Montant: payment.amount,
+          Statut: payment.status,
+          Méthode: payment.method || 'N/A'
+        }));
+
+        await exportToExcel({
+          data,
+          sheetName: 'Paiements',
+          filename: `rapport-financier-${dateRange.start}-${dateRange.end}`
+        });
       } else if (format === 'pdf') {
-        // Pour un vrai PDF, vous utiliseriez une bibliothèque comme jsPDF
-        content = generatePDFContent();
-        filename = `rapport-financier-${dateRange.start}-${dateRange.end}.txt`;
-        mimeType = 'text/plain';
+        // Générer un export PDF via API
+        const response = await fetch('/api/export/reports-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reportType,
+            dateRange,
+            stats,
+            payments: reports.payments,
+            invoices: reports.invoices,
+            schoolName: school?.name
+          })
+        });
+
+        if (!response.ok) throw new Error('Export failed');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `rapport-financier-${dateRange.start}-${dateRange.end}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
       }
-      
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
       
       alert(`Rapport exporté avec succès en format ${format.toUpperCase()} !`);
       
@@ -461,41 +477,6 @@ export default function ReportsPage() {
     } finally {
       setExporting(false);
     }
-  };
-
-  const generateCSV = () => {
-    const headers = ['Date', 'Type', 'Étudiant', 'Montant', 'Statut', 'Méthode'];
-    const rows = reports.payments.map(payment => [
-      new Date(payment.created_at).toLocaleDateString('fr-FR'),
-      payment.type,
-      `${payment.students.profiles.first_name} ${payment.students.profiles.last_name}`,
-      payment.amount,
-      payment.status,
-      payment.method || 'N/A'
-    ]);
-    
-    return [headers, ...rows].map(row => row.join(',')).join('\n');
-  };
-
-  const generatePDFContent = () => {
-    return `
-RAPPORT FINANCIER - ${school?.name || 'École'}
-Période: ${dateRange.start} à ${dateRange.end}
-
-STATISTIQUES GÉNÉRALES:
-- Revenu total: ${formatCurrency(stats.totalRevenue)}
-- Paiements payés: ${stats.paidPayments}
-- Paiements en attente: ${stats.pendingPayments}
-- Croissance mensuelle: ${stats.monthlyGrowth.toFixed(1)}%
-
-DÉTAIL DES FACTURES:
-- Total: ${stats.invoiceStats.total}
-- Payées: ${stats.invoiceStats.paid}
-- En attente: ${stats.invoiceStats.pending}
-- En retard: ${stats.invoiceStats.overdue}
-
-Généré le: ${new Date().toLocaleDateString('fr-FR')}
-    `.trim();
   };
 
   const getGrowthColor = (growth) => {

@@ -18,7 +18,8 @@ import {
   faBars,
   faBook,
   faTimes,
-  faSignOutAlt
+  faSignOutAlt,
+  faFileDownload
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function DirectorLayout({ children }) {
@@ -70,6 +71,7 @@ export default function DirectorLayout({ children }) {
     { name: "Absences", href: "/dashboard/supervisor/absences", icon: faUserGraduate },
     { name: "Relevés de notes", href: "/dashboard/supervisor/grades-report", icon: faBook },
     { name: "Emploi du temps", href: "/dashboard/supervisor/schedule", icon: faCalendarAlt },
+    { name: "Bulletins", href: "/dashboard/supervisor/bulletins", icon: faFileDownload },
   ];
 
   if (loading) {

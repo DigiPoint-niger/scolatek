@@ -1,43 +1,69 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { exportToExcel } from "@/lib/exportUtils";
 
 export default function StudentSchedulePage() {
-  // Export PDF avec jspdf
-  const exportPDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Emploi du temps', 10, 15);
-    let y = 25;
-    schedule.forEach((item, i) => {
-      doc.text(`${item.day} | ${item.start_time} - ${item.end_time} | ${item.subject} | ${item.teacher}` , 10, y);
-      y += 10;
-      if (y > 270) {
-        doc.addPage();
-        y = 15;
-      }
-    });
-    doc.save('emploi-du-temps.pdf');
-  };
-
-  // Export Excel avec xlsx
-  const exportExcel = async () => {
-    const XLSX = await import('xlsx');
-    const data = schedule.map(item => ({
-      Jour: item.day,
-      "Heure début": item.start_time,
-      "Heure fin": item.end_time,
-      Matière: item.subject,
-      Enseignant: item.teacher
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Emploi du temps');
-    XLSX.writeFile(wb, 'emploi-du-temps.xlsx');
-  };
   const [schedule, setSchedule] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Export PDF to server (using pdfkit)
+  const exportPDF = async () => {
+    if (schedule.length === 0) {
+      alert("Aucun emploi du temps à exporter");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/export/schedule-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule })
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'emploi-du-temps.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Erreur lors de l\'export PDF');
+    }
+  };
+
+  // Export Excel using xlsx library
+  const exportExcel = async () => {
+    if (schedule.length === 0) {
+      alert("Aucun emploi du temps à exporter");
+      return;
+    }
+
+    try {
+      const data = schedule.map(item => ({
+        Jour: item.day || '-',
+        "Heure début": item.start_time || '-',
+        "Heure fin": item.end_time || '-',
+        Matière: item.subject || '-',
+        Enseignant: item.teacher || '-'
+      }));
+
+      await exportToExcel({
+        data,
+        sheetName: 'Emploi du temps',
+        filename: 'emploi-du-temps'
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Erreur lors de l\'export Excel');
+    }
+  };
 
   useEffect(() => {
     const fetchSchedule = async () => {
