@@ -14,7 +14,8 @@ import {
   faEye,
   faSchool,
   faUserPlus,
-  faMoneyCheckDollar
+  faMoneyCheckDollar,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons'
 import Link from "next/link";
 
@@ -55,13 +56,15 @@ export default function DirectorDashboard() {
 
       // Récupérer les étudiants récemment inscrits
       const { data: recentStudents } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
           created_at,
-          profiles!inner(first_name, last_name),
-          classes(name)
+          first_name,
+          last_name,
+          class_id
         `)
+        .eq('role', 'student')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(3);
@@ -71,7 +74,7 @@ export default function DirectorDashboard() {
           activities.push({
             id: `student-${student.id}`,
             type: 'student_registration',
-            message: `Nouvel étudiant inscrit: ${student.profiles.first_name} ${student.profiles.last_name}`,
+            message: `Nouvel étudiant inscrit: ${student.first_name} ${student.last_name}`,
             time: formatTimeAgo(student.created_at),
             icon: faUserGraduate,
             color: 'text-green-500',
@@ -102,7 +105,7 @@ export default function DirectorDashboard() {
           activities.push({
             id: `payment-${payment.id}`,
             type: 'payment_received',
-            message: `Paiement de ${payment.amount?.toLocaleString() || 0} FCFA reçu de ${payment.students.profiles.first_name} ${payment.students.profiles.last_name}`,
+            message: `Paiement de ${payment.amount?.toLocaleString() || 0} FCFA reçu de ${payment.student?.first_name} ${payment.student?.last_name}`,
             time: formatTimeAgo(payment.created_at),
             icon: faMoneyCheckDollar,
             color: 'text-blue-500',
@@ -113,12 +116,14 @@ export default function DirectorDashboard() {
 
       // Récupérer les nouveaux enseignants
       const { data: recentTeachers } = await supabase
-        .from('teachers')
+        .from('profiles')
         .select(`
           id,
           created_at,
-          profiles!inner(first_name, last_name)
+          first_name,
+          last_name
         `)
+        .eq('role', 'teacher')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(2);
@@ -128,7 +133,7 @@ export default function DirectorDashboard() {
           activities.push({
             id: `teacher-${teacher.id}`,
             type: 'teacher_added',
-            message: `Nouvel enseignant: ${teacher.profiles.first_name} ${teacher.profiles.last_name}`,
+            message: `Nouvel enseignant: ${teacher.first_name} ${teacher.last_name}`,
             time: formatTimeAgo(teacher.created_at),
             icon: faChalkboardTeacher,
             color: 'text-purple-500',
@@ -193,8 +198,8 @@ export default function DirectorDashboard() {
         { data: payments },
         { data: schoolData }
       ] = await Promise.all([
-        supabase.from('students').select('id').eq('school_id', schoolId),
-        supabase.from('teachers').select('id').eq('school_id', schoolId),
+        supabase.from('profiles').select('id').eq('school_id', schoolId).eq('role', 'student'),
+        supabase.from('profiles').select('id').eq('school_id', schoolId).eq('role', 'teacher'),
         supabase.from('classes').select('id').eq('school_id', schoolId),
         supabase.from('payments').select('amount, status').eq('school_id', schoolId),
         supabase.from('schools').select('*').eq('id', schoolId).single()
@@ -241,17 +246,8 @@ export default function DirectorDashboard() {
   return (
     <div>
       {/* En-tête de l'école */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {school?.name || "École"}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {school?.address || "Adresse non renseignée"}
-        </p>
-      </div>
-
       {/* Cartes de statistiques principales */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
@@ -319,22 +315,6 @@ export default function DirectorDashboard() {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                <FontAwesomeIcon icon={faCheckCircle} className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Étudiants actifs</dt>
-                  <dd className="text-lg font-medium text-gray-900">{stats.activeStudents}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center">
               <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
                 <FontAwesomeIcon icon={faMoneyBill} className="h-6 w-6 text-indigo-600" />
               </div>
@@ -375,9 +355,7 @@ export default function DirectorDashboard() {
                       {stats.totalStudents} étudiant(s) inscrit(s)
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
 
                 <Link
@@ -394,9 +372,7 @@ export default function DirectorDashboard() {
                       {stats.totalTeachers} enseignant(s) dans l'école
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
 
                 <Link
@@ -413,9 +389,7 @@ export default function DirectorDashboard() {
                       {stats.totalClasses} classe(s) créée(s)
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
 
                 <Link
@@ -432,9 +406,7 @@ export default function DirectorDashboard() {
                       {stats.pendingPayments} paiement(s) en attente
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
               </div>
             </div>
@@ -487,7 +459,7 @@ export default function DirectorDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <FontAwesomeIcon icon={faSchool} className="mx-auto h-12 w-12 text-gray-400" />
+                  <FontAwesomeIcon icon={faCheck} className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">Aucune activité récente</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Aucune activité récente dans votre école.

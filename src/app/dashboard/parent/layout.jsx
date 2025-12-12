@@ -20,7 +20,7 @@ export default function ParentLayout({ children }) {
       }
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, schools(*), parents(*)')
+        .select('*, schools(*)')
         .eq('id', session.user.id)
         .single();
       if (!profile || profile.role !== 'parent' || profile.status !== 'active') {
@@ -29,12 +29,9 @@ export default function ParentLayout({ children }) {
       }
       setUser(profile);
       setSchool(profile.schools);
-      // Récupérer les enfants
-      const { data: parentStudents } = await supabase
-        .from('parent_students')
-        .select('student_id, students(*, profiles(*), classes(*))')
-        .eq('parent_id', profile.parents.id);
-      setChildrenList(parentStudents?.map(ps => ps.students) || []);
+      // TODO: Implémenter la relation parent-enfant dans la base de données
+      // Pour l'instant, les enfants ne peuvent pas être récupérés sans la relation parent_students
+      setChildrenList([]);
       setLoading(false);
     };
     fetchParentData();

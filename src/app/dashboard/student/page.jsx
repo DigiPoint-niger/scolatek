@@ -162,9 +162,7 @@ export default function StudentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Consulter mes notes</p>
                   <p className="text-sm text-gray-500">Voir toutes vos évaluations</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -179,9 +177,7 @@ export default function StudentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Voir mes absences</p>
                   <p className="text-sm text-gray-500">Consultez votre historique de présence</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -196,9 +192,8 @@ export default function StudentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Voir mon emploi du temps</p>
                   <p className="text-sm text-gray-500">Consultez votre calendrier scolaire</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
+
               </Link>
             </div>
           </div>

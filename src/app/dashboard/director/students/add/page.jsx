@@ -80,33 +80,24 @@ export default function AddStudent() {
 
       if (authError) throw authError;
 
-      // 2. Créer le profil
+      // 2. Créer le profil avec tous les champs étudiant
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          external_auth_id: authData.user.id,
           first_name: formData.first_name,
           last_name: formData.last_name,
+          email: formData.email,
           phone: formData.phone,
           role: 'student',
           school_id: profile.school_id,
-          status: 'active'
-        });
-
-      if (profileError) throw profileError;
-
-      // 3. Créer l'étudiant
-      const { error: studentError } = await supabase
-        .from('students')
-        .insert({
-          profile_id: authData.user.id,
-          school_id: profile.school_id,
+          status: 'active',
           class_id: formData.class_id || null,
-          matricule: formData.matricule,
+          matricule: formData.matricule || null,
           birth_date: formData.birth_date || null
         });
 
-      if (studentError) throw studentError;
+      if (profileError) throw profileError;
 
       alert("Étudiant créé avec succès !");
       router.push("/dashboard/director/students");

@@ -42,20 +42,17 @@ export default function AddPayment() {
       if (!profile) return;
 
       const { data: studentsData } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
+          first_name,
+          last_name,
           matricule,
-          profiles!inner(
-            first_name,
-            last_name
-          ),
-          classes(
-            name
-          )
+          class_id
         `)
+        .eq('role', 'student')
         .eq('school_id', profile.school_id)
-        .order('created_at');
+        .order('first_name');
 
       setStudents(studentsData || []);
     } catch (error) {
@@ -156,9 +153,9 @@ export default function AddPayment() {
                   <option value="">Sélectionner un étudiant</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.profiles.first_name} {student.profiles.last_name} 
+                      {student.first_name} {student.last_name} 
                       {student.matricule && ` (${student.matricule})`}
-                      {student.classes && ` - ${student.classes.name}`}
+                      {student.class_id && ` - ${student.class_id}`}
                     </option>
                   ))}
                 </select>

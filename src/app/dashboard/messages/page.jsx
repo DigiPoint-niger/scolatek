@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
+  const [receivers, setReceivers] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ 
     subject: '', 
@@ -13,15 +15,24 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchMessages();
+    fetchMessagesAndReceivers();
   }, []);
 
-  async function fetchMessages() {
+  async function fetchMessagesAndReceivers() {
     setLoading(true);
     try {
+      // Récupérer les messages
       const res = await fetch('/api/messages?profileId=ME');
       const data = await res.json();
       setMessages(data);
+
+      // Récupérer tous les utilisateurs pour le select
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, role')
+        .order('first_name');
+      
+      setReceivers(profiles || []);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
     } finally {
@@ -49,7 +60,7 @@ export default function MessagesPage() {
         receiver_profile_id: '', 
         receiver_role: '' 
       });
-      fetchMessages();
+      fetchMessagesAndReceivers();
     } catch (error) {
       console.error('Erreur envoi:', error);
     } finally {
@@ -150,9 +161,7 @@ export default function MessagesPage() {
                 }}
                 required
               />
-              <input
-                type="text"
-                placeholder="ID destinataire (optionnel)"
+              <select
                 value={form.receiver_profile_id}
                 onChange={e => setForm(f => ({ ...f, receiver_profile_id: e.target.value }))}
                 style={{
@@ -162,7 +171,14 @@ export default function MessagesPage() {
                   border: '1px solid #ddd',
                   borderRadius: '4px'
                 }}
-              />
+              >
+                <option value="">Sélectionner un destinataire</option>
+                {receivers.map(receiver => (
+                  <option key={receiver.id} value={receiver.id}>
+                    {receiver.first_name} {receiver.last_name} ({receiver.role})
+                  </option>
+                ))}
+              </select>
               <select
                 value={form.receiver_role}
                 onChange={e => setForm(f => ({ ...f, receiver_role: e.target.value }))}
@@ -175,7 +191,7 @@ export default function MessagesPage() {
                 }}
                 required
               >
-                <option value="">Sélectionnez un rôle</option>
+                <option value="">Sélectionnez un rôle (alternatif)</option>
                 <option value="admin">Admin</option>
                 <option value="accountant">Comptable</option>
                 <option value="director">Directeur</option>

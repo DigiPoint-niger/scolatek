@@ -68,31 +68,22 @@ export default function AddTeacher() {
 
       if (authError) throw authError;
 
-      // 2. Créer le profil
+      // 2. Créer/Mettre à jour le profil avec le rôle teacher
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          external_auth_id: authData.user.id,
           first_name: formData.first_name,
           last_name: formData.last_name,
+          email: formData.email,
           phone: formData.phone,
           role: 'teacher',
           school_id: profile.school_id,
-          status: 'active'
-        });
-
-      if (profileError) throw profileError;
-
-      // 3. Créer l'enseignant
-      const { error: teacherError } = await supabase
-        .from('teachers')
-        .insert({
-          profile_id: authData.user.id,
-          school_id: profile.school_id,
+          status: 'active',
           subject: formData.subject || null
         });
 
-      if (teacherError) throw teacherError;
+      if (profileError) throw profileError;
 
       alert("Enseignant créé avec succès !");
       router.push("/dashboard/director/teachers");

@@ -6,29 +6,101 @@ import { faBook, faPrint } from '@fortawesome/free-solid-svg-icons'
 
 export default function SupervisorGradesReportPage() {
   const [grades, setGrades] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [stats, setStats] = useState({ total: 0, average: 0, highest: 0 });
   const [filter, setFilter] = useState({ class_id: "", subject_id: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profile?.school_id) {
+          setLoading(false);
+          return;
+        }
+
+        // Récupérer les classes
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('school_id', profile.school_id)
+          .order('name');
+
+        // Récupérer les matières
+        const { data: subjectsData } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .eq('school_id', profile.school_id)
+          .order('name');
+
+        setClasses(classesData || []);
+        setSubjects(subjectsData || []);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
     const fetchGrades = async () => {
-      let query = supabase.from('grades').select('*, students(profiles(first_name, last_name, class_id)), subjects(name), classes(name)');
-      if (filter.class_id) query = query.eq('students.class_id', filter.class_id);
-      if (filter.subject_id) query = query.eq('subject_id', filter.subject_id);
-      const { data: gradesData } = await query.order('created_at', { ascending: false });
-      
-      const data = gradesData || [];
-      const values = data.map(g => parseFloat(g.value) || 0).filter(v => v > 0);      
-      const avg = values.length > 0 ? (values.reduce((a, b) => a + b) / values.length).toFixed(2) : 0;
-      const max = values.length > 0 ? Math.max(...values) : 0;
-      
-      setGrades(data);
-      setStats({
-        total: data.length,
-        average: avg,
-        highest: max
-      });
-      setLoading(false);
+      try {
+        let query = supabase
+          .from('grades')
+          .select(`
+            id,
+            class_grade,
+            composition_grade,
+            value,
+            type,
+            comment,
+            created_at,
+            student_profile_id,
+            subject_id,
+            student:student_profile_id(first_name, last_name, class_id),
+            subject:subject_id(name)
+          `);
+
+        if (filter.class_id) {
+          query = query.eq('student.class_id', filter.class_id);
+        }
+        if (filter.subject_id) {
+          query = query.eq('subject_id', filter.subject_id);
+        }
+
+        const { data: gradesData, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const data = gradesData || [];
+        const values = data.map(g => parseFloat(g.value) || 0).filter(v => v > 0);
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b) / values.length).toFixed(2) : 0;
+        const max = values.length > 0 ? Math.max(...values) : 0;
+
+        setGrades(data);
+        setStats({
+          total: data.length,
+          average: avg,
+          highest: max
+        });
+      } catch (error) {
+        console.error('Error fetching grades:', error);
+      }
     };
     fetchGrades();
   }, [filter]);
@@ -108,20 +180,26 @@ export default function SupervisorGradesReportPage() {
         <div className="border-t border-gray-200">
           <div className="px-4 py-5 sm:p-6">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <input 
-                type="text" 
-                placeholder="ID classe" 
+              <select 
                 value={filter.class_id} 
                 onChange={e => setFilter(f => ({ ...f, class_id: e.target.value }))} 
                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-              <input 
-                type="text" 
-                placeholder="ID matière" 
+              >
+                <option value="">Tous les classes</option>
+                {classes.map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+              <select 
                 value={filter.subject_id} 
                 onChange={e => setFilter(f => ({ ...f, subject_id: e.target.value }))} 
                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">Toutes les matières</option>
+                {subjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
+                ))}
+              </select>
               <button 
                 onClick={() => window.print()}
                 className="inline-flex justify-center items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -155,16 +233,16 @@ export default function SupervisorGradesReportPage() {
               {grades.map(grade => (
                 <tr key={grade.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {grade.students?.profiles?.first_name} {grade.students?.profiles?.last_name}
+                    {grade.student?.first_name} {grade.student?.last_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {grade.classes?.name || '-'}
+                    {grade.student?.class_id || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {grade.subjects?.name || '-'}
+                    {grade.subject?.name || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {grade.value}/20
+                    {grade.value || '-'}/20
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {grade.type || '-'}

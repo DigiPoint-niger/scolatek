@@ -59,7 +59,7 @@ export default function TeacherHomeworksPage() {
       const { data: homeworksData } = await supabase
         .from('homeworks')
         .select('*, classes(name), subjects(name)')
-        .eq('teacher_id', session.user.id)
+        .eq('teacher_profile_id', session.user.id)
         .order('due_date', { ascending: true });
 
       setHomeworks(homeworksData || []);
@@ -85,7 +85,7 @@ export default function TeacherHomeworksPage() {
         .from('homeworks')
         .insert({
           class_id: formData.class_id,
-          teacher_id: session.user.id,
+          teacher_profile_id: session.user.id,
           subject_id: formData.subject_id,
           title: formData.title,
           description: formData.description,

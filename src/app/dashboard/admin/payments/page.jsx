@@ -101,15 +101,14 @@ export default function PaymentsPage() {
   const fetchStudents = async () => {
     try {
       const { data, error } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
           matricule,
-          profile:profiles (
-            first_name,
-            last_name
-          )
+          first_name,
+          last_name
         `)
+        .eq('role', 'student')
         .order('matricule');
 
       if (error) throw error;

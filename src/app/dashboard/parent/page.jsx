@@ -164,9 +164,7 @@ export default function ParentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Notes des enfants</p>
                   <p className="text-sm text-gray-500">Consulter les résultats scolaires</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -181,9 +179,7 @@ export default function ParentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Mes factures</p>
                   <p className="text-sm text-gray-500">Consulter et payer les frais de scolarité</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -198,9 +194,8 @@ export default function ParentDashboard() {
                   <p className="text-sm font-medium text-gray-900">Absences des enfants</p>
                   <p className="text-sm text-gray-500">Consulter l'historique de présence</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
+
               </Link>
             </div>
           </div>

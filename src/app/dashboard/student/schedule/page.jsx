@@ -67,23 +67,33 @@ export default function StudentSchedulePage() {
 
   useEffect(() => {
     const fetchSchedule = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      // Récupérer la classe de l'élève
-      const { data: student } = await supabase
-        .from('students')
-        .select('class_id')
-        .eq('profile_id', session.user.id)
-        .single();
-      if (!student) return;
-      // Exemple : table schedules à ajouter si besoin
-      const { data: scheduleData } = await supabase
-        .from('schedules')
-        .select('*')
-        .eq('class_id', student.class_id)
-        .order('day, start_time');
-      setSchedule(scheduleData || []);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Récupérer la classe de l'étudiant depuis son profil
+        const { data: studentProfile } = await supabase
+          .from('profiles')
+          .select('class_id')
+          .eq('id', session.user.id)
+          .eq('role', 'student')
+          .single();
+
+        if (!studentProfile?.class_id) return;
+
+        // Récupérer l'emploi du temps de la classe
+        const { data: scheduleData } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('class_id', studentProfile.class_id)
+          .order('day, start_time');
+
+        setSchedule(scheduleData || []);
+      } catch (error) {
+        console.error('Erreur:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchSchedule();
   }, []);

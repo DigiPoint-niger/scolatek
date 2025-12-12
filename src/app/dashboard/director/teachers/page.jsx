@@ -51,21 +51,20 @@ export default function DirectorTeachers() {
 
       setSchool(schoolData);
 
-      // Récupérer les enseignants avec leurs profils
+      // Récupérer les enseignants depuis la table profiles
       const { data: teachersData, error } = await supabase
-        .from('teachers')
+        .from('profiles')
         .select(`
           id,
+          first_name,
+          last_name,
+          phone,
+          email,
+          status,
           subject,
-          created_at,
-          profiles!inner(
-            first_name,
-            last_name,
-            phone,
-            email,
-            status
-          )
+          created_at
         `)
+        .eq('role', 'teacher')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
@@ -105,28 +104,11 @@ export default function DirectorTeachers() {
     }
 
     try {
-      // Récupérer le profile_id pour supprimer aussi le profil
-      const { data: teacher } = await supabase
-        .from('teachers')
-        .select('profile_id')
-        .eq('id', teacherId)
-        .single();
-
-      if (!teacher) return;
-
-      // Supprimer l'enseignant
-      const { error: teacherError } = await supabase
-        .from('teachers')
-        .delete()
-        .eq('id', teacherId);
-
-      if (teacherError) throw teacherError;
-
-      // Supprimer le profil (cela supprimera aussi l'utilisateur auth grâce à la cascade)
+      // Supprimer le profil (qui est maintenant teacher)
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', teacher.profile_id);
+        .eq('id', teacherId);
 
       if (profileError) throw profileError;
 

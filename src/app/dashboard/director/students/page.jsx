@@ -59,25 +59,22 @@ export default function DirectorStudents() {
 
       setClasses(classesData || []);
 
-      // Récupérer les étudiants avec leurs profils et classes
+      // Récupérer les étudiants depuis la table profiles
       const { data: studentsData, error } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
+          first_name,
+          last_name,
+          phone,
+          status,
           matricule,
           birth_date,
-          created_at,
-          profiles!inner(
-            first_name,
-            last_name,
-            phone,
-            status
-          ),
-          classes(
-            id,
-            name
-          )
+          class_id,
+          created_at
         `)
+        .eq('role', 'student')
+        .eq('school_id', schoolId)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
@@ -108,7 +105,7 @@ export default function DirectorStudents() {
 
     try {
       const { error } = await supabase
-        .from('students')
+        .from('profiles')
         .delete()
         .eq('id', studentId);
 

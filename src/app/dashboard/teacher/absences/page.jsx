@@ -44,11 +44,13 @@ export default function TeacherAbsencesPage() {
 
       setSchool(profile.school_id);
 
-      // Fetch students and their classes
+      // Fetch students avec le nouveau schéma
       const { data: studentsData } = await supabase
-        .from('students')
-        .select('id, profiles(first_name, last_name), classes(id, name)')
-        .eq('school_id', profile.school_id);
+        .from('profiles')
+        .select('id, first_name, last_name, class_id')
+        .eq('role', 'student')
+        .eq('school_id', profile.school_id)
+        .order('first_name');
 
       setStudents(studentsData || []);
 
@@ -56,7 +58,8 @@ export default function TeacherAbsencesPage() {
       const { data: subjectsData } = await supabase
         .from('subjects')
         .select('id, name')
-        .eq('school_id', profile.school_id);
+        .eq('school_id', profile.school_id)
+        .order('name');
 
       setSubjects(subjectsData || []);
 
@@ -64,7 +67,8 @@ export default function TeacherAbsencesPage() {
       const { data: classesData } = await supabase
         .from('classes')
         .select('id, name')
-        .eq('school_id', profile.school_id);
+        .eq('school_id', profile.school_id)
+        .order('name');
 
       setClasses(classesData || []);
 
@@ -151,7 +155,7 @@ export default function TeacherAbsencesPage() {
                   <option value="">-- Sélectionner un élève --</option>
                   {students.map(student => (
                     <option key={student.id} value={student.id}>
-                      {student.profiles?.first_name} {student.profiles?.last_name}
+                      {student.first_name} {student.last_name}
                     </option>
                   ))}
                 </select>

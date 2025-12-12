@@ -82,16 +82,11 @@ export default function DirectorSchedule() {
 
       // Récupérer les enseignants
       const { data: teachersData } = await supabase
-        .from('teachers')
-        .select(`
-          id,
-          subject,
-          profiles!inner(
-            first_name,
-            last_name
-          )
-        `)
-        .eq('school_id', schoolId);
+        .from('profiles')
+        .select('id, first_name, last_name, subject')
+        .eq('role', 'teacher')
+        .eq('school_id', schoolId)
+        .order('first_name');
 
       setTeachers(teachersData || []);
 

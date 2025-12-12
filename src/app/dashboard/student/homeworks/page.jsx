@@ -8,22 +8,40 @@ export default function StudentHomeworksPage() {
 
   useEffect(() => {
     const fetchHomeworks = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      // Récupérer la classe de l'élève
-      const { data: student } = await supabase
-        .from('students')
-        .select('class_id')
-        .eq('profile_id', session.user.id)
-        .single();
-      if (!student) return;
-      const { data: homeworksData } = await supabase
-        .from('homeworks')
-        .select('*, subjects(name), teachers(profiles(first_name, last_name))')
-        .eq('class_id', student.class_id)
-        .order('due_date', { ascending: true });
-      setHomeworks(homeworksData || []);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Récupérer la classe de l'étudiant depuis son profil
+        const { data: studentProfile } = await supabase
+          .from('profiles')
+          .select('class_id')
+          .eq('id', session.user.id)
+          .eq('role', 'student')
+          .single();
+
+        if (!studentProfile?.class_id) return;
+
+        // Récupérer les devoirs de la classe
+        const { data: homeworksData } = await supabase
+          .from('homeworks')
+          .select(`
+            id,
+            title,
+            description,
+            due_date,
+            subject:subject_id(name),
+            teacher:teacher_profile_id(first_name, last_name)
+          `)
+          .eq('class_id', studentProfile.class_id)
+          .order('due_date', { ascending: true });
+
+        setHomeworks(homeworksData || []);
+      } catch (error) {
+        console.error('Erreur:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchHomeworks();
   }, []);
@@ -47,8 +65,8 @@ export default function StudentHomeworksPage() {
           {homeworks.map(hw => (
             <tr key={hw.id}>
               <td>{hw.title}</td>
-              <td>{hw.subjects?.name}</td>
-              <td>{hw.teachers?.profiles?.first_name} {hw.teachers?.profiles?.last_name}</td>
+              <td>{hw.subject?.name}</td>
+              <td>{hw.teacher?.first_name} {hw.teacher?.last_name}</td>
               <td>{new Date(hw.due_date).toLocaleDateString('fr-FR')}</td>
               <td>{hw.description || '-'}</td>
             </tr>

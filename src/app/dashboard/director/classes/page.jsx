@@ -67,8 +67,9 @@ export default function DirectorClasses() {
       const studentCountsMap = {};
       for (const classItem of classesData || []) {
         const { data: students } = await supabase
-          .from('students')
+          .from('profiles')
           .select('id')
+          .eq('role', 'student')
           .eq('class_id', classItem.id);
         
         studentCountsMap[classItem.id] = students?.length || 0;
@@ -100,8 +101,9 @@ export default function DirectorClasses() {
     try {
       // Désaffecter les étudiants de cette classe
       const { error: updateError } = await supabase
-        .from('students')
+        .from('profiles')
         .update({ class_id: null })
+        .eq('role', 'student')
         .eq('class_id', classId);
 
       if (updateError) throw updateError;

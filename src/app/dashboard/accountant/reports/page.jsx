@@ -179,9 +179,10 @@ export default function ReportsPage() {
 
       // Récupérer le nombre d'étudiants
       const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
+        .from('profiles')
         .select('id', { count: 'exact' })
-        .eq('school_id', schoolId);
+        .eq('school_id', schoolId)
+        .eq('role', 'student');
 
       if (studentsError) throw studentsError;
 

@@ -161,9 +161,7 @@ export default function TeacherDashboard() {
                   <p className="text-sm font-medium text-gray-900">Entrer les notes</p>
                   <p className="text-sm text-gray-500">Enregistrer et mettre à jour les évaluations</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -178,9 +176,7 @@ export default function TeacherDashboard() {
                   <p className="text-sm font-medium text-gray-900">Gérer les absences</p>
                   <p className="text-sm text-gray-500">Enregistrer les présences et absences</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -195,9 +191,8 @@ export default function TeacherDashboard() {
                   <p className="text-sm font-medium text-gray-900">Créer des devoirs</p>
                   <p className="text-sm text-gray-500">Assigner du travail aux étudiants</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
+
               </Link>
             </div>
           </div>

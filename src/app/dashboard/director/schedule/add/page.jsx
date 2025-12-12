@@ -69,16 +69,11 @@ export default function AddSchedule() {
 
       // Récupérer les enseignants
       const { data: teachersData } = await supabase
-        .from('teachers')
-        .select(`
-          id,
-          subject,
-          profiles!inner(
-            first_name,
-            last_name
-          )
-        `)
-        .eq('school_id', profile.school_id);
+        .from('profiles')
+        .select('id, first_name, last_name, subject')
+        .eq('role', 'teacher')
+        .eq('school_id', profile.school_id)
+        .order('first_name');
 
       setTeachers(teachersData || []);
 
@@ -219,7 +214,7 @@ export default function AddSchedule() {
                   <option value="">Sélectionner un enseignant</option>
                   {teachers.map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>
-                      {teacher.profiles.first_name} {teacher.profiles.last_name}
+                      {teacher.first_name} {teacher.last_name}
                       {teacher.subject && ` - ${teacher.subject}`}
                     </option>
                   ))}

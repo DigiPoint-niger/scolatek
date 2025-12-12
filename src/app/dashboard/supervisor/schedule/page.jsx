@@ -6,35 +6,102 @@ import { faCalendarAlt, faPlus, faTrash } from '@fortawesome/free-solid-svg-icon
 
 export default function SupervisorSchedulePage() {
   const [schedules, setSchedules] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [stats, setStats] = useState({ total: 0, days: 0 });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ class_id: "", day: "", start_time: "", end_time: "", subject: "", teacher: "" });
+  const [formData, setFormData] = useState({ class_id: "", day: "", start_time: "", end_time: "", subject_id: "", teacher_profile_id: "" });
 
   useEffect(() => {
-    const fetchSchedules = async () => {
-      const { data: schedulesData } = await supabase
-        .from('schedules')
-        .select('*')
-        .order('day, start_time');
-      const data = schedulesData || [];
-      const uniqueDays = new Set(data.map(s => s.day)).size;
-      setSchedules(data);
-      setStats({ total: data.length, days: uniqueDays });
-      setLoading(false);
+    const fetchData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profile?.school_id) {
+          setLoading(false);
+          return;
+        }
+
+        // Récupérer les emplois du temps
+        const { data: schedulesData } = await supabase
+          .from('schedules')
+          .select('*')
+          .order('day, start_time');
+        
+        // Récupérer les classes
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('school_id', profile.school_id)
+          .order('name');
+
+        // Récupérer les enseignants
+        const { data: teachersData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .eq('role', 'teacher')
+          .eq('school_id', profile.school_id)
+          .order('first_name');
+
+        // Récupérer les matières
+        const { data: subjectsData } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .eq('school_id', profile.school_id)
+          .order('name');
+
+        const data = schedulesData || [];
+        const uniqueDays = new Set(data.map(s => s.day)).size;
+        
+        setSchedules(data);
+        setClasses(classesData || []);
+        setTeachers(teachersData || []);
+        setSubjects(subjectsData || []);
+        setStats({ total: data.length, days: uniqueDays });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchSchedules();
+    fetchData();
   }, []);
 
   const handleAddSchedule = async (e) => {
     e.preventDefault();
-    const { error } = await supabase
-      .from('schedules')
-      .insert(formData);
-    if (!error) {
-      setShowModal(false);
-      setFormData({ class_id: "", day: "", start_time: "", end_time: "", subject: "", teacher: "" });
-      window.location.reload();
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .insert({
+          class_id: formData.class_id,
+          day: formData.day,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          subject_id: formData.subject_id,
+          teacher_profile_id: formData.teacher_profile_id
+        });
+      if (!error) {
+        setShowModal(false);
+        setFormData({ class_id: "", day: "", start_time: "", end_time: "", subject_id: "", teacher_profile_id: "" });
+        window.location.reload();
+      } else {
+        alert('Erreur lors de l\'ajout du créneau');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Erreur lors de l\'ajout');
     }
   };
 
@@ -113,33 +180,40 @@ export default function SupervisorSchedulePage() {
             <h3 className="text-lg font-bold mb-4 text-gray-900">Ajouter un créneau</h3>
             <form onSubmit={handleAddSchedule} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Classe</label>
-                <input 
-                  type="text" 
-                  placeholder="ID classe" 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Classe *</label>
+                <select 
                   value={formData.class_id} 
                   onChange={e => setFormData({ ...formData, class_id: e.target.value })} 
                   className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
                   required 
-                />
+                >
+                  <option value="">Sélectionner une classe</option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jour</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: Lundi" 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jour *</label>
+                <select 
                   value={formData.day} 
                   onChange={e => setFormData({ ...formData, day: e.target.value })} 
                   className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
                   required 
-                />
+                >
+                  <option value="">Sélectionner un jour</option>
+                  <option value="Lundi">Lundi</option>
+                  <option value="Mardi">Mardi</option>
+                  <option value="Mercredi">Mercredi</option>
+                  <option value="Jeudi">Jeudi</option>
+                  <option value="Vendredi">Vendredi</option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Heure début</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Heure début *</label>
                   <input 
-                    type="text" 
-                    placeholder="08:00" 
+                    type="time" 
                     value={formData.start_time} 
                     onChange={e => setFormData({ ...formData, start_time: e.target.value })} 
                     className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
@@ -147,10 +221,9 @@ export default function SupervisorSchedulePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Heure fin</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Heure fin *</label>
                   <input 
-                    type="text" 
-                    placeholder="09:00" 
+                    type="time" 
                     value={formData.end_time} 
                     onChange={e => setFormData({ ...formData, end_time: e.target.value })} 
                     className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
@@ -159,26 +232,32 @@ export default function SupervisorSchedulePage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Matière</label>
-                <input 
-                  type="text" 
-                  placeholder="Mathématiques" 
-                  value={formData.subject} 
-                  onChange={e => setFormData({ ...formData, subject: e.target.value })} 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Matière *</label>
+                <select 
+                  value={formData.subject_id} 
+                  onChange={e => setFormData({ ...formData, subject_id: e.target.value })} 
                   className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
                   required 
-                />
+                >
+                  <option value="">Sélectionner une matière</option>
+                  {subjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>{subject.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Enseignant</label>
-                <input 
-                  type="text" 
-                  placeholder="Nom de l'enseignant" 
-                  value={formData.teacher} 
-                  onChange={e => setFormData({ ...formData, teacher: e.target.value })} 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enseignant *</label>
+                <select 
+                  value={formData.teacher_profile_id} 
+                  onChange={e => setFormData({ ...formData, teacher_profile_id: e.target.value })} 
                   className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
                   required 
-                />
+                >
+                  <option value="">Sélectionner un enseignant</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.first_name} {teacher.last_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <button 

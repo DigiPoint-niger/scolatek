@@ -192,9 +192,7 @@ export default function SupervisorDashboard() {
                   <p className="text-sm font-medium text-gray-900">Listes d'élèves</p>
                   <p className="text-sm text-gray-500">Impression et gestion des listes</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -209,9 +207,7 @@ export default function SupervisorDashboard() {
                   <p className="text-sm font-medium text-gray-900">Liste de promotion</p>
                   <p className="text-sm text-gray-500">Gérer les promotions d'élèves</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -226,9 +222,7 @@ export default function SupervisorDashboard() {
                   <p className="text-sm font-medium text-gray-900">Justifier les absences</p>
                   <p className="text-sm text-gray-500">Valider et justifier les absences</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
               </Link>
 
               <Link
@@ -243,9 +237,8 @@ export default function SupervisorDashboard() {
                   <p className="text-sm font-medium text-gray-900">Emplois du temps</p>
                   <p className="text-sm text-gray-500">Modifier et consulter les horaires</p>
                 </div>
-                <div className="flex-shrink-0">
-                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                </div>
+                <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
+
               </Link>
             </div>
           </div>

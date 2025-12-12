@@ -13,31 +13,47 @@ export default function ParentInvoicesPage() {
 
   useEffect(() => {
     const fetchInvoices = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      // Récupérer les enfants
-      const { data: parent } = await supabase
-        .from('parents')
-        .select('id')
-        .eq('profile_id', session.user.id)
-        .single();
-      if (!parent) return;
-      const { data: parentStudents } = await supabase
-        .from('parent_students')
-        .select('student_id')
-        .eq('parent_id', parent.id);
-      const studentIds = parentStudents?.map(ps => ps.student_id) || [];
-      if (studentIds.length === 0) return;
-      const { data: invoicesData } = await supabase
-        .from('invoices')
-        .select('*, students(profiles(first_name, last_name))')
-        .in('student_id', studentIds)
-        .order('due_date', { ascending: false });
-      setInvoices(invoicesData || []);
-      // Récupérer les reçus
-      const { data: receiptsData } = await supabase
-        .from('receipts')
-        .select('*, students(profiles(first_name, last_name)), payments(amount, paid_at)')
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Récupérer le profil parent
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('id, school_id')
+          .eq('id', session.user.id)
+          .eq('role', 'parent')
+          .single();
+
+        if (!parentProfile?.school_id) return;
+
+        // Récupérer les factures de l'école (TODO: implémenter la relation parent-enfant)
+        const { data: invoicesData } = await supabase
+          .from('invoices')
+          .select(`
+            id,
+            invoice_number,
+            amount,
+            due_date,
+            status,
+            student:student_profile_id(first_name, last_name)
+          `)
+          .eq('school_id', parentProfile.school_id)
+          .order('due_date', { ascending: false });
+
+        setInvoices(invoicesData || []);
+
+        // Récupérer les reçus
+        const { data: receiptsData } = await supabase
+          .from('receipts')
+          .select(`
+            id,
+            receipt_number,
+            amount,
+            paid_at,
+            student:student_profile_id(first_name, last_name),
+            payment:payment_id(amount, paid_at)
+          `)
         .in('student_id', studentIds)
         .order('paid_at', { ascending: false });
       setReceipts(receiptsData || []);

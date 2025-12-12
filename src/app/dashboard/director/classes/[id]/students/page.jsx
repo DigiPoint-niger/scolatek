@@ -43,16 +43,15 @@ export default function ClassStudents() {
 
       // Récupérer les étudiants de cette classe
       const { data: classStudents, error: studentsError } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
-          matricule,
-          profiles!inner(
-            first_name,
-            last_name,
-            phone
-          )
+          first_name,
+          last_name,
+          phone,
+          matricule
         `)
+        .eq('role', 'student')
         .eq('class_id', classId)
         .order('created_at');
 
@@ -69,17 +68,17 @@ export default function ClassStudents() {
 
       if (profile) {
         const { data: unassignedStudents, error: unassignedError } = await supabase
-          .from('students')
+          .from('profiles')
           .select(`
             id,
-            matricule,
-            profiles!inner(
-              first_name,
-              last_name
-            )
+            first_name,
+            last_name,
+            matricule
           `)
+          .eq('role', 'student')
           .eq('school_id', profile.school_id)
           .is('class_id', null)
+          .eq('school_id', profile.school_id)
           .order('created_at');
 
         if (unassignedError) throw unassignedError;
@@ -97,7 +96,7 @@ export default function ClassStudents() {
     setAssigning(true);
     try {
       const { error } = await supabase
-        .from('students')
+        .from('profiles')
         .update({ class_id: classId })
         .eq('id', studentId);
 
@@ -121,7 +120,7 @@ export default function ClassStudents() {
 
     try {
       const { error } = await supabase
-        .from('students')
+        .from('profiles')
         .update({ class_id: null })
         .eq('id', studentId);
 

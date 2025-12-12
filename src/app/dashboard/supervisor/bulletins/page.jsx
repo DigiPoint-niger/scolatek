@@ -67,8 +67,15 @@ export default function GenerateBulletinsPage() {
 
       // Fetch all students in school
       const { data: studentsData } = await supabase
-        .from('students')
-        .select('id, matricule, profiles(first_name, last_name), classes(name)')
+        .from('profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          matricule,
+          class_id
+        `)
+        .eq('role', 'student')
         .eq('school_id', profile.school_id)
         .order('created_at', { ascending: false });
 

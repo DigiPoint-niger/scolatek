@@ -7,6 +7,7 @@ import { faUsers, faFileExcel, faFilePdf, faPrint } from '@fortawesome/free-soli
 
 export default function SupervisorStudentsListPage() {
   const [students, setStudents] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [filter, setFilter] = useState({ class_id: "", status: "" });
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,15 @@ export default function SupervisorStudentsListPage() {
           setLoading(false);
           return;
         }
+
+        // Récupérer les classes
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('school_id', profile.school_id)
+          .order('name');
+
+        setClasses(classesData || []);
 
         // Fetch students from supervisor's school (using consolidated profiles table)
         let query = supabase
@@ -206,13 +216,16 @@ export default function SupervisorStudentsListPage() {
         <div className="border-t border-gray-200">
           <div className="px-4 py-5 sm:p-6">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <input 
-                type="text" 
-                placeholder="ID classe" 
+              <select 
                 value={filter.class_id} 
                 onChange={e => setFilter(f => ({ ...f, class_id: e.target.value }))} 
                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">Toutes les classes</option>
+                {classes.map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
               <select 
                 value={filter.status} 
                 onChange={e => setFilter(f => ({ ...f, status: e.target.value }))} 

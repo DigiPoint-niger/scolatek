@@ -14,7 +14,8 @@ import {
   faUsers,
   faEye,
   faCheck,
-  faTimes
+  faTimes,
+  faClipboardList
 } from '@fortawesome/free-solid-svg-icons'
 import Link from "next/link";
 
@@ -37,21 +38,39 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Récupérer les statistiques principales
+      // 1. Récupération parallèle des statistiques principales
       const [
         { data: schools },
         { data: pendingProfiles },
         { data: subscriptions },
         { data: users },
-        { data: activeUsers }
+        { data: activeUsers },
+        { data: logs } // Récupération des logs réels
       ] = await Promise.all([
         supabase.from('schools').select('id, is_active'),
         supabase.from('profiles').select('id').eq('status', 'pending'),
         supabase.from('subscriptions').select('price, status'),
         supabase.from('profiles').select('id'),
-        supabase.from('profiles').select('id').eq('status', 'active')
+        supabase.from('profiles').select('id').eq('status', 'active'),
+        // Récupération des 5 dernières activités depuis audit_logs
+        supabase
+          .from('audit_logs')
+          .select(`
+            id,
+            action,
+            entity,
+            created_at,
+            actor_profile_id,
+            profiles:actor_profile_id (
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(5)
       ]);
 
+      // Calcul des totaux
       const totalSchools = schools?.length || 0;
       const pendingRequests = pendingProfiles?.length || 0;
       const activeSubscriptions = subscriptions?.filter(sub => sub.status === 'active').length || 0;
@@ -70,116 +89,98 @@ export default function AdminDashboard() {
         activeUsers: activeUsersCount
       });
 
-      // Récupérer les statistiques par rôle
-      await fetchRoleStats();
+      // 2. Traitement des Logs pour l'affichage (Mapping)
+      const formattedActivities = logs?.map(log => {
+        let details = {
+          message: `Action ${log.action} sur ${log.entity}`,
+          icon: faClipboardList,
+          color: 'bg-gray-500'
+        };
 
-      // Récupérer les activités récentes (exemple)
-      setRecentActivities([
-        {
-          id: 1,
-          type: 'school_registration',
-          message: 'Nouvelle école "Lycée Excellence" inscrite',
-          time: 'Il y a 2 heures',
-          icon: faSchool,
-          color: 'text-blue-500'
-        },
-        {
-          id: 2,
-          type: 'user_approval',
-          message: 'Compte de Moussa Diallo approuvé',
-          time: 'Il y a 5 heures',
-          icon: faUser,
-          color: 'text-green-500'
-        },
-        {
-          id: 3,
-          type: 'payment_received',
-          message: 'Paiement de 150,000 FCFA reçu',
-          time: 'Il y a 1 jour',
-          icon: faMoneyBill,
-          color: 'text-purple-500'
+        const actorName = log.profiles 
+          ? `${log.profiles.first_name} ${log.profiles.last_name}` 
+          : 'Système';
+
+        // Personnalisation selon l'entité
+        switch (log.entity) {
+          case 'schools':
+            details = {
+              message: `École ${log.action === 'create' ? 'enregistrée' : 'modifiée'}`,
+              icon: faSchool,
+              color: 'bg-blue-500'
+            };
+            break;
+          case 'profiles':
+            details = {
+              message: `Profil ${log.action} par ${actorName}`,
+              icon: faUser,
+              color: 'bg-green-500'
+            };
+            break;
+          case 'subscriptions':
+          case 'payments':
+            details = {
+              message: `Paiement/Abonnement ${log.action}`,
+              icon: faMoneyBill,
+              color: 'bg-purple-500'
+            };
+            break;
+          default:
+            details.message = `${log.action} sur ${log.entity} par ${actorName}`;
         }
-      ]);
 
+        return {
+          id: log.id,
+          type: log.entity,
+          message: details.message,
+          time: new Date(log.created_at).toLocaleDateString('fr-FR', { 
+            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+          }),
+          icon: details.icon,
+          color: details.color
+        };
+      }) || [];
+
+      setRecentActivities(formattedActivities);
+
+      // 3. Récupérer les statistiques par rôle
+      await fetchRoleStats();
+      
       setLoading(false);
     } catch (error) {
-      console.error("Erreur:", error);
+      console.error("Erreur dashboard:", error);
       setLoading(false);
     }
   };
 
   const fetchRoleStats = async () => {
     try {
-      // Récupérer les statistiques par rôle depuis la base de données
       const { data: roleData, error } = await supabase
         .from('profiles')
-        .select('role, status')
+        .select('role')
         .eq('status', 'active');
 
       if (error) throw error;
 
-      // Compter les utilisateurs par rôle
       const roleCounts = {};
       roleData?.forEach(profile => {
         roleCounts[profile.role] = (roleCounts[profile.role] || 0) + 1;
       });
 
-      // Mapper les rôles avec leurs icônes et couleurs
       const roleStatsData = [
-        { 
-          role: 'director', 
-          count: roleCounts.director || 0, 
-          icon: faUserTie, 
-          color: 'bg-blue-500',
-          label: 'Directeurs'
-        },
-        { 
-          role: 'teacher', 
-          count: roleCounts.teacher || 0, 
-          icon: faUserGraduate, 
-          color: 'bg-green-500',
-          label: 'Enseignants'
-        },
-        { 
-          role: 'student', 
-          count: roleCounts.student || 0, 
-          icon: faUser, 
-          color: 'bg-yellow-500',
-          label: 'Étudiants'
-        },
-        { 
-          role: 'parent', 
-          count: roleCounts.parent || 0, 
-          icon: faUsers, 
-          color: 'bg-purple-500',
-          label: 'Parents'
-        },
-        { 
-          role: 'supervisor', 
-          count: roleCounts.supervisor || 0, 
-          icon: faUser, 
-          color: 'bg-indigo-500',
-          label: 'Superviseurs'
-        },
-        { 
-          role: 'accountant', 
-          count: roleCounts.accountant || 0, 
-          icon: faUser, 
-          color: 'bg-pink-500',
-          label: 'Comptables'
-        }
-      ].filter(role => role.count > 0); // Filtrer les rôles sans utilisateurs
+        { role: 'director', icon: faUserTie, color: 'bg-blue-500', label: 'Directeurs' },
+        { role: 'teacher', icon: faUserGraduate, color: 'bg-green-500', label: 'Enseignants' },
+        { role: 'student', icon: faUser, color: 'bg-yellow-500', label: 'Étudiants' },
+        { role: 'parent', icon: faUsers, color: 'bg-purple-500', label: 'Parents' },
+        { role: 'supervisor', icon: faUser, color: 'bg-indigo-500', label: 'Superviseurs' },
+        { role: 'accountant', icon: faUser, color: 'bg-pink-500', label: 'Comptables' }
+      ]
+      .map(r => ({ ...r, count: roleCounts[r.role] || 0 }))
+      .filter(r => r.count > 0);
 
       setRoleStats(roleStatsData);
     } catch (error) {
-      console.error("Erreur lors de la récupération des statistiques par rôle:", error);
-      // Données par défaut en cas d'erreur
-      setRoleStats([
-        { role: 'director', count: 0, icon: faUserTie, color: 'bg-blue-500', label: 'Directeurs' },
-        { role: 'teacher', count: 0, icon: faUserGraduate, color: 'bg-green-500', label: 'Enseignants' },
-        { role: 'student', count: 0, icon: faUser, color: 'bg-yellow-500', label: 'Étudiants' },
-        { role: 'parent', count: 0, icon: faUsers, color: 'bg-purple-500', label: 'Parents' }
-      ]);
+      console.error("Erreur stats rôles:", error);
     }
   };
 
@@ -195,6 +196,7 @@ export default function AdminDashboard() {
     <div>
       {/* Cartes de statistiques principales */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        {/* Carte Écoles */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
@@ -211,6 +213,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Carte Demandes */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
@@ -227,6 +230,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Carte Abonnements */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
@@ -243,6 +247,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Carte Revenus */}
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
@@ -267,7 +272,7 @@ export default function AdminDashboard() {
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">Utilisateurs par Rôle</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Répartition des utilisateurs selon leur rôle</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">Répartition des utilisateurs actifs</p>
           </div>
           <div className="border-t border-gray-200">
             <div className="px-4 py-5 sm:p-6">
@@ -293,7 +298,7 @@ export default function AdminDashboard() {
                   ))
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-gray-500">Aucun utilisateur trouvé</p>
+                    <p className="text-gray-500">Aucun utilisateur actif trouvé</p>
                   </div>
                 )}
               </div>
@@ -305,7 +310,7 @@ export default function AdminDashboard() {
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">Actions Rapides</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Accédez rapidement aux fonctionnalités principales</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">Gestion de la plateforme</p>
           </div>
           <div className="border-t border-gray-200">
             <div className="px-4 py-5 sm:p-6">
@@ -321,12 +326,10 @@ export default function AdminDashboard() {
                     <span className="absolute inset-0" aria-hidden="true" />
                     <p className="text-sm font-medium text-gray-900">Vérifier les demandes</p>
                     <p className="text-sm text-gray-500">
-                      {stats.pendingRequests} demande(s) en attente d'approbation
+                      {stats.pendingRequests} demande(s) en attente
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
 
                 <Link
@@ -340,12 +343,10 @@ export default function AdminDashboard() {
                     <span className="absolute inset-0" aria-hidden="true" />
                     <p className="text-sm font-medium text-gray-900">Gérer les écoles</p>
                     <p className="text-sm text-gray-500">
-                      {stats.totalSchools} école(s) inscrite(s) sur la plateforme
+                      {stats.totalSchools} école(s) inscrite(s)
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
 
                 <Link
@@ -359,12 +360,10 @@ export default function AdminDashboard() {
                     <span className="absolute inset-0" aria-hidden="true" />
                     <p className="text-sm font-medium text-gray-900">Gérer les utilisateurs</p>
                     <p className="text-sm text-gray-500">
-                      {stats.totalUsers} utilisateur(s) sur la plateforme
+                      Vue globale des accès
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FontAwesomeIcon icon={faEye} className="h-5 w-5 text-gray-400" />
                 </Link>
               </div>
             </div>
@@ -378,7 +377,7 @@ export default function AdminDashboard() {
           <div>
             <h3 className="text-lg leading-6 font-medium text-gray-900">Activités Récentes</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Dernières actions sur la plateforme
+              Dernières actions système (Audit Logs)
             </p>
           </div>
           <Link
@@ -405,7 +404,7 @@ export default function AdminDashboard() {
                         <div className="relative flex space-x-3">
                           <div>
                             <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${activity.color}`}>
-                              <FontAwesomeIcon icon={activity.icon} className="h-5 w-5 text-white" />
+                              <FontAwesomeIcon icon={activity.icon} className="h-4 w-4 text-white" />
                             </span>
                           </div>
                           <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
@@ -429,7 +428,7 @@ export default function AdminDashboard() {
                 <FontAwesomeIcon icon={faCheck} className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">Aucune activité</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Aucune activité récente sur la plateforme.
+                  Le journal d'audit est vide pour le moment.
                 </p>
               </div>
             )}
@@ -437,7 +436,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Statistiques de performance */}
+      {/* KPI Performance */}
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -486,7 +485,7 @@ export default function AdminDashboard() {
                   <dt className="text-sm font-medium text-gray-500 truncate">Revenu moyen</dt>
                   <dd className="text-lg font-medium text-gray-900">
                     {stats.activeSubscriptions > 0 ? 
-                      (stats.totalRevenue / stats.activeSubscriptions).toLocaleString() : 
+                      Math.round(stats.totalRevenue / stats.activeSubscriptions).toLocaleString() : 
                       0
                     } FCFA
                   </dd>

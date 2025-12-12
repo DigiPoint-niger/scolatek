@@ -104,19 +104,19 @@ export default function InvoicesPage() {
 
       // Récupérer les étudiants de l'école
       const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
+        .from('profiles')
         .select(`
           id,
           matricule,
-          profiles!inner(
-            first_name,
-            last_name
-          ),
-          classes!inner(
+          first_name,
+          last_name,
+          class_id,
+          classes!class_id(
             name
           )
         `)
         .eq('school_id', schoolId)
+        .eq('role', 'student')
         .order('matricule');
 
       if (studentsError) throw studentsError;
@@ -127,14 +127,13 @@ export default function InvoicesPage() {
         .from('invoices')
         .select(`
           *,
-          students!inner(
+          student:student_profile_id(
             id,
+            first_name,
+            last_name,
             matricule,
-            profiles!inner(
-              first_name,
-              last_name
-            ),
-            classes!inner(
+            class_id,
+            classes!class_id(
               name
             )
           )
@@ -147,9 +146,9 @@ export default function InvoicesPage() {
       // Formater les données pour l'affichage
       const formattedInvoices = (invoicesData || []).map(invoice => ({
         ...invoice,
-        student_name: `${invoice.students.profiles.first_name} ${invoice.students.profiles.last_name}`,
-        student_matricule: invoice.students.matricule,
-        class_name: invoice.students.classes.name
+        student_name: `${invoice.student.first_name} ${invoice.student.last_name}`,
+        student_matricule: invoice.student.matricule,
+        class_name: invoice.student.classes.name
       }));
 
       setInvoices(formattedInvoices);
@@ -165,7 +164,7 @@ export default function InvoicesPage() {
       }
       // Préparer les données pour l'insertion
       const invoiceData = {
-        student_id: newInvoice.student_id,
+        student_profile_id: newInvoice.student_id,
         school_id: school.id,
         type: newInvoice.type,
         amount: parseInt(newInvoice.amount),
@@ -182,14 +181,13 @@ export default function InvoicesPage() {
         .insert(invoiceData)
         .select(`
           *,
-          students!inner(
+          student:student_profile_id(
             id,
+            first_name,
+            last_name,
             matricule,
-            profiles!inner(
-              first_name,
-              last_name
-            ),
-            classes!inner(
+            class_id,
+            classes!class_id(
               name
             )
           )
@@ -201,9 +199,9 @@ export default function InvoicesPage() {
       // Formater et ajouter à la liste
       const formattedInvoice = {
         ...createdInvoice,
-        student_name: `${createdInvoice.students.profiles.first_name} ${createdInvoice.students.profiles.last_name}`,
-        student_matricule: createdInvoice.students.matricule,
-        class_name: createdInvoice.students.classes.name
+        student_name: `${createdInvoice.student.first_name} ${createdInvoice.student.last_name}`,
+        student_matricule: createdInvoice.student.matricule,
+        class_name: createdInvoice.student.classes.name
       };
 
       setInvoices(prev => [formattedInvoice, ...prev]);
@@ -826,7 +824,7 @@ export default function InvoicesPage() {
                       <option value="">Sélectionner un étudiant</option>
                       {students.map(student => (
                         <option key={student.id} value={student.id}>
-                          {student.profiles.first_name} {student.profiles.last_name} - {student.matricule} - {student.classes.name}
+                          {student.first_name} {student.last_name} - {student.matricule} - {student.classes?.name}
                         </option>
                       ))}
                     </select>

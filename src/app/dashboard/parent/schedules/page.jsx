@@ -8,29 +8,40 @@ export default function ParentSchedulesPage() {
 
   useEffect(() => {
     const fetchSchedules = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      // Récupérer les enfants
-      const { data: parent } = await supabase
-        .from('parents')
-        .select('id')
-        .eq('profile_id', session.user.id)
-        .single();
-      if (!parent) return;
-      const { data: parentStudents } = await supabase
-        .from('parent_students')
-        .select('student_id, students(class_id)')
-        .eq('parent_id', parent.id);
-      const classIds = parentStudents?.map(ps => ps.students?.class_id).filter(Boolean) || [];
-      if (classIds.length === 0) return;
-      // Exemple : table schedules à ajouter si besoin
-      const { data: schedulesData } = await supabase
-        .from('schedules')
-        .select('*')
-        .in('class_id', classIds)
-        .order('day, start_time');
-      setSchedules(schedulesData || []);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Récupérer le profil parent
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('id, school_id')
+          .eq('id', session.user.id)
+          .eq('role', 'parent')
+          .single();
+
+        if (!parentProfile?.school_id) return;
+
+        // Récupérer les emplois du temps de l'école (TODO: implémenter la relation parent-enfant)
+        const { data: schedulesData } = await supabase
+          .from('schedules')
+          .select(`
+            id,
+            class_id,
+            day,
+            start_time,
+            end_time,
+            subject_id,
+            teacher_profile_id
+          `)
+          .order('day, start_time');
+
+        setSchedules(schedulesData || []);
+      } catch (error) {
+        console.error('Erreur:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchSchedules();
   }, []);

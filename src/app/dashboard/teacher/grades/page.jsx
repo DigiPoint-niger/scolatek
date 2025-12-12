@@ -59,8 +59,8 @@ export default function TeacherGradesPage() {
 
     try {
       const data = grades.map(grade => ({
-        Élève: `${grade.students?.profiles?.first_name || ''} ${grade.students?.profiles?.last_name || ''}`,
-        Matière: grade.subjects?.name,
+        Élève: `${grade.student?.first_name || ''} ${grade.student?.last_name || ''}`,
+        Matière: grade.subject?.name,
         Note: grade.value,
         Type: grade.type,
         Date: new Date(grade.created_at).toLocaleDateString('fr-FR'),
@@ -101,9 +101,11 @@ export default function TeacherGradesPage() {
 
       // Fetch students
       const { data: studentsData } = await supabase
-        .from('students')
-        .select('id, profiles(first_name, last_name)')
-        .eq('school_id', profile.school_id);
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('role', 'student')
+        .eq('school_id', profile.school_id)
+        .order('first_name');
 
       setStudents(studentsData || []);
 
@@ -111,15 +113,26 @@ export default function TeacherGradesPage() {
       const { data: subjectsData } = await supabase
         .from('subjects')
         .select('id, name')
-        .eq('school_id', profile.school_id);
+        .eq('school_id', profile.school_id)
+        .order('name');
 
       setSubjects(subjectsData || []);
 
       // Fetch grades
       const { data: gradesData } = await supabase
         .from('grades')
-        .select('*, students(profiles(first_name, last_name)), subjects(name)')
-        .eq('teacher_id', session.user.id)
+        .select(`
+          id,
+          value,
+          type,
+          comment,
+          created_at,
+          student_profile_id,
+          subject_id,
+          student:student_profile_id(first_name, last_name),
+          subject:subject_id(name)
+        `)
+        .eq('teacher_profile_id', session.user.id)
         .order('created_at', { ascending: false });
 
       setGrades(gradesData || []);
@@ -218,7 +231,7 @@ export default function TeacherGradesPage() {
                   <option value="">-- Sélectionner un élève --</option>
                   {students.map(student => (
                     <option key={student.id} value={student.id}>
-                      {student.profiles?.first_name} {student.profiles?.last_name}
+                      {student.first_name} {student.last_name}
                     </option>
                   ))}
                 </select>
@@ -333,8 +346,8 @@ export default function TeacherGradesPage() {
             ) : (
               grades.map(grade => (
                 <tr key={grade.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">{grade.students?.profiles?.first_name} {grade.students?.profiles?.last_name}</td>
-                  <td className="px-4 py-3">{grade.subjects?.name}</td>
+                  <td className="px-4 py-3">{grade.student?.first_name} {grade.student?.last_name}</td>
+                  <td className="px-4 py-3">{grade.subject?.name}</td>
                   <td className="px-4 py-3 text-center font-semibold">{grade.value}</td>
                   <td className="px-4 py-3 text-sm capitalize">{grade.type}</td>
                   <td className="px-4 py-3 text-sm">{new Date(grade.created_at).toLocaleDateString('fr-FR')}</td>

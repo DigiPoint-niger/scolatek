@@ -20,21 +20,25 @@ export default function TeacherLayout({ children }) {
       }
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, schools(*), teachers(*)')
+        .select('*')
         .eq('id', session.user.id)
         .single();
+
       if (!profile || profile.role !== 'teacher' || profile.status !== 'active') {
         router.push("/unauthorized");
         return;
       }
+
+      // Récupérer l'école
+      const { data: school } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('id', profile.school_id)
+        .single();
+
       setUser(profile);
-      setSchool(profile.schools);
-      // Récupérer les matières enseignées
-      const { data: teacherSubjects } = await supabase
-        .from('teachers')
-        .select('subject')
-        .eq('profile_id', profile.id);
-      setSubjects(teacherSubjects?.map(ts => ts.subject) || []);
+      setSchool(school);
+      setSubjects(profile.subject ? [profile.subject] : []);
       setLoading(false);
     };
     fetchTeacherData();
